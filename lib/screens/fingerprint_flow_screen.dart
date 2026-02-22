@@ -65,7 +65,7 @@ class _FingerprintFlowScreenState extends State<FingerprintFlowScreen> {
 
   void _addColor() {
     if (_pickedColors.length >= kMaxColorsPerQuestion) {
-      _showMessage('Maximum $_kMaxColorsPerQuestion colors per question');
+      _showMessage('Maximum $kMaxColorsPerQuestion colors per question');
       return;
     }
 
