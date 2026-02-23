@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/fingerprint_flow_screen.dart';
+import 'widgets/phone_frame.dart';
 
 void main() {
   runApp(const ZenmoApp());
@@ -16,7 +17,7 @@ class ZenmoApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeScreen(),
+      home: const PhoneFrame(child: HomeScreen()),
     );
   }
 }
