@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../config/fingerprint_questions.dart';
 import '../models/fingerprint_answer.dart';
-import '../widgets/simple_color_picker.dart';
+import '../widgets/color_picker/color_picker_widget.dart';
 
 class FingerprintFlowScreen extends StatefulWidget {
   final List<FingerprintAnswer>? initialAnswers;
@@ -234,8 +234,8 @@ class _FingerprintFlowScreenState extends State<FingerprintFlowScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Color picker (Marc will replace this)
-                    SimpleColorPicker(
+                    // Color picker
+                    ColorPickerWidget(
                       currentColor: _selectedColor,
                       onColorChanged: (color) {
                         setState(() => _selectedColor = color);
