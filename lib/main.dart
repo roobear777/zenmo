@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'screens/fingerprint_flow_screen.dart';
+import 'screens/initial_logo_screen.dart';
+import 'state/fingerprint_state.dart';
 import 'widgets/phone_frame.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const ZenmoApp());
 }
 
@@ -11,13 +15,24 @@ class ZenmoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Zenmo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+    return ChangeNotifierProvider(
+      create: (_) {
+        final state = FingerprintState();
+        // Load saved state asynchronously
+        state.load();
+        return state;
+      },
+      child: MaterialApp(
+        title: 'Zenmo',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          useMaterial3: true,
+        ),
+        builder: (context, child) {
+          return PhoneFrame(child: child ?? const SizedBox.shrink());
+        },
+        home: const InitialLogoScreen(), // Updated to use new UI redesign entry point
       ),
-      home: const PhoneFrame(child: HomeScreen()),
     );
   }
 }

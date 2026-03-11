@@ -46,3 +46,4 @@ app.*.map.json
 
 # Reference implementation (not part of project)
 color_wallet_reference/
+color_wallet/

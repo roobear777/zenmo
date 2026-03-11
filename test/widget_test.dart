@@ -7,8 +7,8 @@ void main() {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const ZenmoApp());
 
-    // Verify the welcome screen appears
-    expect(find.text('Welcome to Zenmo'), findsOneWidget);
-    expect(find.text('Create Fingerprint'), findsOneWidget);
+    // Verify the initial logo screen appears with new UI
+    expect(find.text('zenmo'), findsOneWidget);
+    expect(find.text('Test Questions'), findsOneWidget);
   });
 }
