@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/fingerprint_questions.dart';
+import '../config/example_palettes.dart';
 import '../state/fingerprint_state.dart';
 import '../state/color_creation_state.dart';
 import '../widgets/navigation_button.dart';
@@ -171,57 +172,6 @@ class PaletteDetailScreen extends StatelessWidget {
   /// Builds the 3-column grid of example saved palettes
   /// Requirements: 16.1, 16.3, 16.5
   Widget _buildExamplePalettesGrid() {
-    final examplePalettes = [
-      _ExamplePalette(
-        'Need more sleep',
-        [
-          const Color(0xFF2D3748),
-          const Color(0xFF4A5568),
-          const Color(0xFF718096),
-        ],
-      ),
-      _ExamplePalette(
-        'Passsssion',
-        [
-          const Color(0xFFE53E3E),
-          const Color(0xFFF56565),
-          const Color(0xFFFC8181),
-        ],
-      ),
-      _ExamplePalette(
-        'No thanks gran...',
-        [
-          const Color(0xFF38B2AC),
-          const Color(0xFF4FD1C5),
-          const Color(0xFF81E6D9),
-        ],
-      ),
-      _ExamplePalette(
-        'Spring Blooms A...',
-        [
-          const Color(0xFFED64A6),
-          const Color(0xFFF687B3),
-          const Color(0xFFFBB6CE),
-        ],
-      ),
-      _ExamplePalette(
-        'Deserunt ut ut dui',
-        [
-          const Color(0xFF9F7AEA),
-          const Color(0xFFB794F4),
-          const Color(0xFFD6BCFA),
-        ],
-      ),
-      _ExamplePalette(
-        '[add an answer]',
-        [
-          const Color(0xFFEDF2F7),
-          const Color(0xFFE2E8F0),
-          const Color(0xFFCBD5E0),
-        ],
-      ),
-    ];
-
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -231,9 +181,9 @@ class PaletteDetailScreen extends StatelessWidget {
         mainAxisSpacing: 12,
         childAspectRatio: 1,
       ),
-      itemCount: examplePalettes.length,
+      itemCount: kExamplePalettes.length,
       itemBuilder: (context, index) {
-        final palette = examplePalettes[index];
+        final palette = kExamplePalettes[index];
         return SavedPaletteCard(
           title: palette.title,
           colors: palette.colors,
@@ -244,12 +194,4 @@ class PaletteDetailScreen extends StatelessWidget {
       },
     );
   }
-}
-
-/// Helper class for example palette data
-class _ExamplePalette {
-  final String title;
-  final List<Color> colors;
-
-  _ExamplePalette(this.title, this.colors);
 }

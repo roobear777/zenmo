@@ -1,27 +1,63 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'screens/fingerprint_flow_screen.dart';
+import 'firebase_options.dart';
 import 'screens/initial_logo_screen.dart';
+import 'services/auth_service.dart';
+import 'services/firestore_fingerprint_service.dart';
+import 'services/shared_prompts_service.dart';
+import 'services/shared_prompts_service.dart';
+import 'state/color_creation_state.dart';
+import 'state/shared_prompts_state.dart';
 import 'state/fingerprint_state.dart';
 import 'widgets/phone_frame.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const ZenmoApp());
+
+  // Initialise Firebase — swallow errors so the app always renders.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase init failed: $e');
+  }
+
+  // Sign in anonymously — swallow errors, app works without it.
+  final authService = AuthService();
+  await authService.ensureAnonymousSignIn();
+
+  runApp(ZenmoApp(authService: authService));
 }
 
 class ZenmoApp extends StatelessWidget {
-  const ZenmoApp({super.key});
+  const ZenmoApp({super.key, required this.authService});
+
+  final AuthService authService;
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) {
-        final state = FingerprintState();
-        // Load saved state asynchronously
-        state.load();
-        return state;
-      },
+    return MultiProvider(
+      providers: [
+        Provider<AuthService>.value(value: authService),
+        Provider<FirestoreFingerprintService>.value(
+          value: FirestoreFingerprintService(),
+        ),
+        ChangeNotifierProvider<FingerprintState>(
+          create: (_) {
+            final state = FingerprintState();
+            state.load();
+            return state;
+          },
+        ),
+        ChangeNotifierProvider<ColorCreationState>(
+          create: (_) => ColorCreationState(),
+        ),
+        ChangeNotifierProvider<SharedPromptsState>(
+          create: (_) => SharedPromptsState(SharedPromptsService()),
+        ),
+      ],
       child: MaterialApp(
         title: 'Zenmo',
         theme: ThemeData(
@@ -31,44 +67,7 @@ class ZenmoApp extends StatelessWidget {
         builder: (context, child) {
           return PhoneFrame(child: child ?? const SizedBox.shrink());
         },
-        home: const InitialLogoScreen(), // Updated to use new UI redesign entry point
-      ),
-    );
-  }
-}
-
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Zenmo'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Welcome to Zenmo',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 32),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const FingerprintFlowScreen(),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.fingerprint),
-              label: const Text('Create Fingerprint'),
-            ),
-          ],
-        ),
+        home: const InitialLogoScreen(),
       ),
     );
   }

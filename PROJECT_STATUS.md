@@ -1,7 +1,7 @@
 # Zenmo Project Status
 
-**Last Updated**: March 6, 2026  
-**Current Phase**: Color Picker Implementation - Core Complete
+**Last Updated**: March 14, 2026  
+**Current Phase**: Web Deployment Complete + Codebase Refactoring Complete
 
 ## Project Overview
 
@@ -38,7 +38,7 @@ GitHub: https://github.com/roobear777/zenmo
    - Summary screen showing all answers
    - Files: `lib/screens/fingerprint_flow_screen.dart`, `lib/config/fingerprint_questions.dart`, `lib/models/fingerprint_answer.dart`
 
-3. **Sophisticated Color Picker** ✅ JUST COMPLETED
+3. **Sophisticated Color Picker** ✅ COMPLETE
    - Hue/Value disc wheel with 10 concentric rings
    - Neutral grey hub (center 11% of radius)
    - Color mosaic screen with 600 variations
@@ -46,6 +46,26 @@ GitHub: https://github.com/roobear777/zenmo
    - Neutral mosaic screen with 240 grey tones
    - Exact mathematical formulas from color_wallet reference
    - Files: `lib/widgets/color_picker/` (5 files)
+
+4. **UI Redesign (Zenmo 2.0)** ✅ COMPLETE & DEPLOYED
+   - Animated splash screen with Zenmo text (fade-in, scale animation)
+   - Removed "Party Questions" title from question list
+   - Visual feedback for locked questions (greyed out, 50% opacity)
+   - Anonymous feedback survey integration with Google Forms
+   - Custom fonts (OleoScript, Lobster) for branding
+   - Deployed to Firebase Hosting at https://zenmobeta.web.app
+   - Landing page with version selector (v1 and v2)
+   - Files: `lib/screens/initial_logo_screen.dart`, `lib/screens/understand_screen.dart`, `lib/widgets/question_card.dart`
+
+5. **Codebase Refactoring & Audit** ✅ COMPLETE
+   - Extracted persistence logic to `PersistenceService` (platform-agnostic)
+   - Centralized design constants in `AppConstants`
+   - Moved example palettes to `example_palettes.dart` config
+   - Removed dead code (HomeScreen, unused imports)
+   - Created barrel files for clean imports
+   - Established services layer for future integrations
+   - Improved separation of concerns
+   - See `CODEBASE_AUDIT_REPORT.md` for full details
 
 ### 📋 Implementation Details
 
@@ -129,18 +149,26 @@ zenmo/
 1. **Delete old color picker**: `lib/widgets/simple_color_picker.dart` is no longer needed
 2. **Test on device**: Run `flutter run` and test the complete flow
 3. **Visual customization**: Marc can modify colors, sizes, animations in color picker files
+4. **Verify web deployment**: Test https://zenmobeta.web.app in browser
 
 #### Testing (Not Yet Done)
-- Task 11: Unit tests for color generation utilities
-- Task 12: Property-based tests (36 correctness properties)
-- Task 13: Widget tests for all components
-- Task 14: Integration tests for complete flow
-- Task 15: Visual regression testing
-- Task 16: Performance testing
+- Unit tests for new services (PersistenceService)
+- Property-based tests for color generation
+- Widget tests for all components
+- Integration tests for complete flow
+- Visual regression testing
+- Performance testing
+
+#### iOS/TestFlight Preparation
+- Create iOS-specific persistence service (Keychain)
+- Implement Firebase integration service
+- Add unit tests for all services
+- Test on iOS simulator and physical device
+- Prepare TestFlight submission
 
 #### Future Features
-- Database integration (TODOs in fingerprint_flow_screen.dart)
 - User authentication
+- Backend sync with Firestore
 - Sharing fingerprints
 - Additional customization options
 
@@ -259,4 +287,22 @@ From `.kiro/specs/color-picker-mosaic/tasks.md`:
 
 ---
 
-**Questions?** Check the documentation files or ask Ru!
+## Recent Milestones (March 2026)
+
+### UI Redesign & Web Deployment
+- ✅ Implemented animated splash screen with Zenmo branding
+- ✅ Redesigned question list with visual feedback for locked questions
+- ✅ Integrated anonymous feedback survey
+- ✅ Added custom fonts (OleoScript, Lobster)
+- ✅ Deployed to Firebase Hosting
+- ✅ Created landing page with version selector
+
+### Codebase Refactoring
+- ✅ Extracted persistence to service layer
+- ✅ Centralized design constants
+- ✅ Removed dead code
+- ✅ Created barrel files for clean imports
+- ✅ Improved architecture for iOS transition
+- ✅ See `CODEBASE_AUDIT_REPORT.md` for full details
+
+---

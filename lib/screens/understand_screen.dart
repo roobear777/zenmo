@@ -1,15 +1,13 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/fingerprint_questions.dart';
 import '../state/fingerprint_state.dart';
-import '../state/question_progress_tracker.dart';
+import '../state/shared_prompts_state.dart';
 import '../widgets/navigation_button.dart';
-import '../widgets/question_card.dart';
-import 'palette_detail_screen.dart';
+import 'add_color_screen.dart';
 import 'summary_screen.dart';
 
-/// Questions overview screen showing all 5 questions with expandable cards
-/// Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.2, 3.4, 12.9, 15.1, 15.3, 15.5
 class UnderstandScreen extends StatefulWidget {
   const UnderstandScreen({super.key});
 
@@ -18,155 +16,186 @@ class UnderstandScreen extends StatefulWidget {
 }
 
 class _UnderstandScreenState extends State<UnderstandScreen> {
+  int? _selectedIndex;
+  String? _selectedSharedLabel;
+
+  void _selectHex(int index, FingerprintState fs) {
+    setState(() { _selectedIndex = index; _selectedSharedLabel = null; });
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      setState(() => _selectedIndex = null);
+      fs.currentQuestionIndex = index;
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => AddColorScreen(questionIndex: index),
+      ));
+    });
+  }
+
+  void _selectSharedHex(int sharedIndex, String label, FingerprintState fs) {
+    // shared prompts use indices starting at kFingerprintTotalQuestions
+    final stateIndex = kFingerprintTotalQuestions + sharedIndex;
+    setState(() { _selectedSharedLabel = label; _selectedIndex = null; });
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!mounted) return;
+      setState(() => _selectedSharedLabel = null);
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => AddColorScreen(questionIndex: stateIndex),
+      ));
+    });
+  }
+
+  Future<void> _showAddPromptDialog(SharedPromptsState sps) async {
+    final controller = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Add a prompt', style: TextStyle(fontWeight: FontWeight.w600)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'e.g. First love, A dream...',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) await sps.addPrompt(text);
+              if (ctx.mounted) Navigator.of(ctx).pop();
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Consumer<FingerprintState>(
-      builder: (context, fingerprintState, child) {
-        final currentQuestionIndex = fingerprintState.currentQuestionIndex;
-        final allComplete = fingerprintState.allQuestionsComplete;
-        final progressTracker = QuestionProgressTracker(fingerprintState);
+    return Consumer2<FingerprintState, SharedPromptsState>(
+      builder: (context, fs, sps, _) {
+        final anyComplete = fs.anyQuestionComplete;
+
+        // Build the full flat list of hex items
+        // Each item: (label, chosenColors, isCompleted, onTap)
+        final List<_HexItem> items = [
+          // Fixed prompts
+          ...List.generate(kFingerprintTotalQuestions, (i) => _HexItem(
+            label: kFingerprintQuestions[i],
+            chosenColors: fs.getAnswer(i).swatches.map((s) => s.color).toList(),
+            isCompleted: fs.isQuestionComplete(i),
+            onTap: () => _selectHex(i, fs),
+          )),
+          // Shared prompts from Firestore
+          ...List.generate(sps.prompts.length, (i) {
+            final stateIndex = kFingerprintTotalQuestions + i;
+            return _HexItem(
+              label: sps.prompts[i],
+              chosenColors: fs.getAnswer(stateIndex).swatches.map((s) => s.color).toList(),
+              isCompleted: fs.isQuestionComplete(stateIndex),
+              onTap: () => _selectSharedHex(i, sps.prompts[i], fs),
+            );
+          }),
+        ];
 
         return Scaffold(
           backgroundColor: Colors.white,
           body: SafeArea(
-            child: Column(
+            child: Stack(
               children: [
-                // Top bar with back button and title
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      // Back button - Requirement 2.1
-                      NavigationButton(
-                        type: NavigationButtonType.back,
-                        onPressed: () {
-                          // Navigate to InitialLogoScreen - Requirement 2.8
-                          Navigator.of(context).pop();
-                        },
-                      ),
-                      const Expanded(
-                        child: Center(
-                          child: Text(
-                            'Party Questions', // Requirement 2.2
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87,
-                            ),
+                Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Row(
+                        children: [
+                          NavigationButton(
+                            type: NavigationButtonType.back,
+                            onPressed: () => Navigator.of(context).pop(),
                           ),
-                        ),
+                          const Spacer(),
+                        ],
                       ),
-                      // Spacer to balance the back button
-                      const SizedBox(width: 48),
-                    ],
-                  ),
-                ),
+                    ),
 
-                // Question cards - Requirement 2.3
-                Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: kFingerprintTotalQuestions,
-                    itemBuilder: (context, index) {
-                      final answer = fingerprintState.getAnswer(index);
-                      final isCompleted = fingerprintState.isQuestionComplete(index);
-                      final isExpanded = index == currentQuestionIndex;
-                      final canAccess = progressTracker.canAccessQuestion(index);
-                      
-                      // Get palette preview colors (up to 4)
-                      final palettePreview = answer.swatches
-                          .take(4)
-                          .map((swatch) => swatch.color)
-                          .toList();
-
-                      return QuestionCard(
-                        questionIndex: index,
-                        questionText: kFingerprintQuestions[index],
-                        isExpanded: isExpanded, // Requirement 2.4, 2.5, 15.3
-                        isCompleted: isCompleted, // Requirement 15.1, 15.5
-                        palettePreview: palettePreview,
-                        onTap: () {
-                          // Enforce sequential access - Requirement 3.1, 3.5
-                          if (!canAccess) {
-                            // Show message that previous question must be completed first
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Please complete Question $index first',
-                                ),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                            return;
-                          }
-                          
-                          // Update current question index
-                          fingerprintState.currentQuestionIndex = index;
-                          
-                          // Navigate to PaletteDetailScreen - Requirement 3.2
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => PaletteDetailScreen(
-                                questionIndex: index,
-                              ),
+                    // Scrollable honeycomb wall
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final availW = constraints.maxWidth - 32;
+                          final r = availW / (3 * math.sqrt(3));
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                            child: _HoneycombWall(
+                              hexRadius: r,
+                              items: items,
+                              onAddTap: () => _showAddPromptDialog(sps),
                             ),
                           );
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    ),
+
+                    // View Answers button
+                    if (anyComplete)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 4, 24, 16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const SummaryScreen()),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF6366F1),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('View Answers', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
 
-                // Bottom section with chevron and home icon
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      // Chevron down icon - Requirement 2.6
-                      if (!allComplete)
-                        const Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Colors.grey,
-                          size: 32,
+                // Focus overlay
+                if (_selectedIndex != null || _selectedSharedLabel != null)
+                  AnimatedOpacity(
+                    opacity: 1.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: Container(
+                      color: Colors.white,
+                      child: Center(
+                        child: _HexTile(
+                          radius: 110,
+                          chosenColors: _selectedIndex != null
+                              ? fs.getAnswer(_selectedIndex!).swatches.map((s) => s.color).toList()
+                              : [],
+                          label: _selectedIndex != null
+                              ? kFingerprintQuestions[_selectedIndex!]
+                              : (_selectedSharedLabel ?? ''),
+                          isCompleted: _selectedIndex != null
+                              ? fs.isQuestionComplete(_selectedIndex!)
+                              : false,
                         ),
-                      
-                      // Navigate to Summary button when all complete - Requirement 3.4
-                      if (allComplete)
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const SummaryScreen(),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text('View Summary'),
-                        ),
-                      
-                      const SizedBox(height: 8),
-                      
-                      // Home icon - Requirement 2.7
-                      NavigationButton(
-                        type: NavigationButtonType.home,
-                        onPressed: () {
-                          // Navigate to InitialLogoScreen - Requirement 2.9
-                          Navigator.of(context).popUntil((route) => route.isFirst);
-                        },
                       ),
-                    ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -174,4 +203,219 @@ class _UnderstandScreenState extends State<UnderstandScreen> {
       },
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Data class for a hex item
+// ---------------------------------------------------------------------------
+
+class _HexItem {
+  final String label;
+  final List<Color> chosenColors;
+  final bool isCompleted;
+  final VoidCallback onTap;
+  const _HexItem({required this.label, required this.chosenColors, required this.isCompleted, required this.onTap});
+}
+
+// ---------------------------------------------------------------------------
+// Scrollable honeycomb wall — rows of 3 and 2, offset alternating
+// ---------------------------------------------------------------------------
+
+class _HoneycombWall extends StatelessWidget {
+  const _HoneycombWall({
+    required this.hexRadius,
+    required this.items,
+    required this.onAddTap,
+  });
+
+  final double hexRadius;
+  final List<_HexItem> items;
+  final VoidCallback onAddTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = hexRadius;
+    final hexW = math.sqrt(3) * r;
+    final hexH = 2 * r;
+    final rowStep = 1.5 * r;
+    final totalW = 3 * hexW;
+
+    // All items + the "+" add hex at the end
+    final allItems = [...items, null]; // null = add button
+    final int total = allItems.length;
+
+    // Layout: row 0 = 3 wide (no offset), row 1 = 2 wide (offset hexW/2), repeating
+    // We pack items left-to-right into this pattern
+    final List<Widget> positioned = [];
+    int idx = 0;
+    int row = 0;
+    double maxY = 0;
+
+    while (idx < total) {
+      final bool isWideRow = row % 2 == 0;
+      final int count = isWideRow ? 3 : 2;
+      final double xOffset = isWideRow ? 0 : hexW / 2;
+      final double y = row * rowStep;
+
+      for (int col = 0; col < count && idx < total; col++, idx++) {
+        final double x = xOffset + col * hexW;
+        final double cy = y + hexH / 2;
+        final item = allItems[idx];
+
+        final Widget tile = item == null
+            ? GestureDetector(
+                onTap: onAddTap,
+                child: _CustomHexTile(radius: r, label: null),
+              )
+            : GestureDetector(
+                onTap: item.onTap,
+                child: _HexTile(
+                  radius: r,
+                  chosenColors: item.chosenColors,
+                  label: item.label,
+                  isCompleted: item.isCompleted,
+                ),
+              );
+
+        positioned.add(Positioned(
+          left: x,
+          top: cy - hexH / 2,
+          child: tile,
+        ));
+
+        final bottom = cy + hexH / 2;
+        if (bottom > maxY) maxY = bottom;
+      }
+      row++;
+    }
+
+    return SizedBox(
+      width: totalW,
+      height: maxY,
+      child: Stack(children: positioned),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hex tiles & painter (unchanged)
+// ---------------------------------------------------------------------------
+
+class _HexTile extends StatelessWidget {
+  const _HexTile({
+    required this.radius,
+    required this.chosenColors,
+    required this.label,
+    required this.isCompleted,
+  });
+
+  final double radius;
+  final List<Color> chosenColors;
+  final String label;
+  final bool isCompleted;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = math.sqrt(3) * radius;
+    final h = 2 * radius;
+    return SizedBox(
+      width: w,
+      height: h,
+      child: CustomPaint(
+        painter: _HexPainter(chosenColors: chosenColors),
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: radius * 0.2),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.black87,
+                fontSize: radius * 0.24,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
+                height: 1.25,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CustomHexTile extends StatelessWidget {
+  const _CustomHexTile({required this.radius, required this.label});
+  final double radius;
+  final String? label;
+
+  @override
+  Widget build(BuildContext context) {
+    final w = math.sqrt(3) * radius;
+    final h = 2 * radius;
+    return SizedBox(
+      width: w,
+      height: h,
+      child: CustomPaint(
+        painter: _HexPainter(chosenColors: const [], outlined: true),
+        child: Center(
+          child: label != null
+              ? Padding(
+                  padding: EdgeInsets.symmetric(horizontal: radius * 0.2),
+                  child: Text(label!, textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.black54, fontSize: radius * 0.22, fontWeight: FontWeight.w500, height: 1.25)),
+                )
+              : Icon(Icons.add, color: Colors.black38, size: radius * 0.5),
+        ),
+      ),
+    );
+  }
+}
+
+class _HexPainter extends CustomPainter {
+  const _HexPainter({required this.chosenColors, this.outlined = false});
+  final List<Color> chosenColors;
+  final bool outlined;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = _hexPath(size);
+    if (chosenColors.isEmpty) {
+      canvas.drawPath(path, Paint()..color = Colors.white);
+    } else if (chosenColors.length == 1) {
+      canvas.drawPath(path, Paint()..color = chosenColors.first);
+    } else {
+      final n = chosenColors.length;
+      final sliceW = size.width / n;
+      for (int i = 0; i < n; i++) {
+        canvas.save();
+        canvas.clipPath(path);
+        canvas.drawRect(Rect.fromLTWH(i * sliceW, 0, sliceW, size.height), Paint()..color = chosenColors[i]);
+        canvas.restore();
+      }
+    }
+    canvas.drawPath(path, Paint()
+      ..color = const Color(0xFF555555)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5);
+  }
+
+  Path _hexPath(Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.height / 2;
+    final path = Path();
+    for (int i = 0; i < 6; i++) {
+      final angle = math.pi / 6 + math.pi / 3 * i;
+      final x = cx + r * math.cos(angle);
+      final y = cy + r * math.sin(angle);
+      i == 0 ? path.moveTo(x, y) : path.lineTo(x, y);
+    }
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldRepaint(_HexPainter old) =>
+      old.chosenColors != chosenColors || old.outlined != outlined;
 }

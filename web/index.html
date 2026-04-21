@@ -31,6 +31,9 @@
 
   <title>zenmo</title>
   <link rel="manifest" href="manifest.json">
+  <!-- Preload CanvasKit to start download in parallel with JS -->
+  <link rel="preload" href="canvaskit/canvaskit.wasm" as="fetch" crossorigin="anonymous">
+  <link rel="preload" href="main.dart.js" as="script">
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>

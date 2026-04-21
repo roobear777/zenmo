@@ -3,39 +3,47 @@ import 'package:provider/provider.dart';
 import '../config/fingerprint_questions.dart';
 import '../state/fingerprint_state.dart';
 import '../widgets/color_square.dart';
-import '../widgets/primary_button.dart';
+import '../widgets/navigation_button.dart';
 
-/// Summary screen showing all completed question answers
-/// Requirements: 11.1, 11.2, 11.3
-class SummaryScreen extends StatelessWidget {
+/// Summary screen showing all completed question answers.
+/// Requirements: 11.1, 11.2, 11.3, 2.1, 2.2, 2.8, 2.9, 2.10
+class SummaryScreen extends StatefulWidget {
   const SummaryScreen({super.key});
+
+  @override
+  State<SummaryScreen> createState() => _SummaryScreenState();
+}
+
+class _SummaryScreenState extends State<SummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
     return Consumer<FingerprintState>(
-      builder: (context, fingerprintState, child) {
+      builder: (context, fingerprintState, _) {
         return Scaffold(
           backgroundColor: Colors.white,
           body: SafeArea(
             child: Column(
               children: [
-                // Header
+                // Back to hexagon screen
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Your Party Fingerprint',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: NavigationButton(
+                      type: NavigationButtonType.hexagon,
+                      onPressed: () => Navigator.of(context).pop(),
                     ),
                   ),
                 ),
 
-                // Scrollable content with all questions and their palettes
+                // Scrollable content
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     itemCount: kFingerprintTotalQuestions,
                     itemBuilder: (context, index) {
                       final answer = fingerprintState.getAnswer(index);
@@ -46,10 +54,9 @@ class SummaryScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Question text
                             Text(
                               'Question ${index + 1}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: Color(0xFF6366F1),
@@ -58,17 +65,15 @@ class SummaryScreen extends StatelessWidget {
                             const SizedBox(height: 4),
                             Text(
                               questionText,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.black87,
                               ),
                             ),
                             const SizedBox(height: 12),
-
-                            // Color palette display
                             if (answer.swatches.isEmpty)
-                              Text(
+                              const Text(
                                 'No colors selected',
                                 style: TextStyle(
                                   fontSize: 14,
@@ -82,7 +87,8 @@ class SummaryScreen extends StatelessWidget {
                                 runSpacing: 8,
                                 children: answer.swatches.map((swatch) {
                                   return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       ColorSquare(
                                         color: swatch.color,
@@ -93,7 +99,7 @@ class SummaryScreen extends StatelessWidget {
                                           width: 60,
                                           child: Text(
                                             swatch.title,
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               fontSize: 12,
                                               color: Colors.black87,
                                             ),
@@ -112,18 +118,6 @@ class SummaryScreen extends StatelessWidget {
                   ),
                 ),
 
-                // Done button at the bottom
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: PrimaryButton(
-                    label: 'Done',
-                    fullWidth: true,
-                    onPressed: () {
-                      // Navigate to InitialLogoScreen - Requirement 11.3
-                      Navigator.of(context).popUntil((route) => route.isFirst);
-                    },
-                  ),
-                ),
               ],
             ),
           ),

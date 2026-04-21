@@ -1,37 +1,45 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../models/fingerprint_answer.dart';
 import '../models/color_swatch.dart';
 import '../config/fingerprint_questions.dart';
+import '../services/persistence_service.dart';
 
 /// Manages the overall fingerprint creation state
 class FingerprintState extends ChangeNotifier {
   List<FingerprintAnswer> _answers;
   int _currentQuestionIndex;
+  String? _customPrompt;
+  final PersistenceService _persistenceService;
 
   FingerprintState({
     List<FingerprintAnswer>? answers,
     int currentQuestionIndex = 0,
+    String? customPrompt,
+    PersistenceService? persistenceService,
   })  : _answers = answers ??
             List.generate(
-              kFingerprintTotalQuestions,
+              kFingerprintTotalQuestions + 1, // +1 for custom prompt slot
               (_) => FingerprintAnswer.empty(),
             ),
-        _currentQuestionIndex = currentQuestionIndex;
+        _currentQuestionIndex = currentQuestionIndex,
+        _customPrompt = customPrompt,
+        _persistenceService = persistenceService ?? PersistenceService();
 
   /// Gets the answer for a specific question index
   FingerprintAnswer getAnswer(int index) {
-    if (index < 0 || index >= kFingerprintTotalQuestions) {
-      return FingerprintAnswer.empty();
+    if (index < 0) return FingerprintAnswer.empty();
+    // Auto-expand for shared prompt indices
+    while (index >= _answers.length) {
+      _answers.add(FingerprintAnswer.empty());
     }
     return _answers[index];
   }
 
   /// Updates the answer for a specific question index
   void updateAnswer(int index, FingerprintAnswer answer) {
-    if (index < 0 || index >= kFingerprintTotalQuestions) {
-      return;
+    if (index < 0) return;
+    while (index >= _answers.length) {
+      _answers.add(FingerprintAnswer.empty());
     }
     _answers[index] = answer;
     notifyListeners();
@@ -39,7 +47,7 @@ class FingerprintState extends ChangeNotifier {
 
   /// Checks if a question is complete (has at least one color with a valid title)
   bool isQuestionComplete(int index) {
-    if (index < 0 || index >= kFingerprintTotalQuestions) {
+    if (index < 0 || index >= _answers.length) {
       return false;
     }
     final answer = _answers[index];
@@ -57,6 +65,14 @@ class FingerprintState extends ChangeNotifier {
     return true;
   }
 
+  /// Checks if at least one question is complete
+  bool get anyQuestionComplete {
+    for (int i = 0; i < kFingerprintTotalQuestions; i++) {
+      if (isQuestionComplete(i)) return true;
+    }
+    return false;
+  }
+
   /// Gets the current question index
   int get currentQuestionIndex => _currentQuestionIndex;
 
@@ -68,10 +84,32 @@ class FingerprintState extends ChangeNotifier {
     }
   }
 
+  /// Gets the custom prompt (session-only, index 5)
+  String? get customPrompt => _customPrompt;
+
+  /// Sets the custom prompt
+  void setCustomPrompt(String prompt) {
+    _customPrompt = prompt.trim().isEmpty ? null : prompt.trim();
+    notifyListeners();
+  }
+
+  /// Resets all answers and custom prompt for a new user session
+  void resetAll() {
+    _answers = List.generate(
+      kFingerprintTotalQuestions + 1,
+      (_) => FingerprintAnswer.empty(),
+    );
+    _currentQuestionIndex = 0;
+    _customPrompt = null;
+    notifyListeners();
+    save();
+  }
+
   /// Adds a color to a specific question
   void addColorToQuestion(int questionIndex, ColorSwatch swatch) {
-    if (questionIndex < 0 || questionIndex >= kFingerprintTotalQuestions) {
-      return;
+    if (questionIndex < 0) return;
+    while (questionIndex >= _answers.length) {
+      _answers.add(FingerprintAnswer.empty());
     }
 
     final answer = _answers[questionIndex];
@@ -100,7 +138,7 @@ class FingerprintState extends ChangeNotifier {
 
   /// Removes a color from a specific question
   void removeColorFromQuestion(int questionIndex, int colorIndex) {
-    if (questionIndex < 0 || questionIndex >= kFingerprintTotalQuestions) {
+    if (questionIndex < 0 || questionIndex >= _answers.length) {
       return;
     }
 
@@ -129,9 +167,10 @@ class FingerprintState extends ChangeNotifier {
   /// Saves the state to persistent storage
   Future<void> save() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final stateJson = jsonEncode(toMap());
-      await prefs.setString('fingerprint_state', stateJson);
+      await _persistenceService.saveState(
+        answers: _answers,
+        currentQuestionIndex: _currentQuestionIndex,
+      );
     } catch (e) {
       // Log error but don't throw - state is still in memory
       debugPrint('Error saving fingerprint state: $e');
@@ -141,15 +180,11 @@ class FingerprintState extends ChangeNotifier {
   /// Loads the state from persistent storage
   Future<void> load() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final stateJson = prefs.getString('fingerprint_state');
-      
-      if (stateJson != null) {
-        final stateMap = jsonDecode(stateJson) as Map<String, dynamic>;
-        final loadedState = FingerprintState.fromMap(stateMap);
-        
-        _answers = loadedState._answers;
-        _currentQuestionIndex = loadedState._currentQuestionIndex;
+      final result = await _persistenceService.loadState();
+
+      if (result != null) {
+        _answers = result.answers;
+        _currentQuestionIndex = result.currentQuestionIndex;
         notifyListeners();
       }
     } catch (e) {

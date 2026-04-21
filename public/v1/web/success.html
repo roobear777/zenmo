@@ -1,0 +1,62 @@
+﻿<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Payment Success • Zenmo</title>
+<style>
+html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#f7f7f8;color:#111}
+.wrap{display:flex;align-items:center;justify-content:center;height:100%;padding:24px}
+.card{background:#fff;border:1px solid #e6e6e6;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.06);max-width:560px;width:100%;padding:24px 22px}
+.title{font-weight:700;font-size:20px;margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.ok{width:22px;height:22px;border-radius:50%;background:#10b981;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.muted{color:#555;margin:6px 0 14px}
+.row{margin:10px 0 0;font:13px ui-monospace,Menlo,Consolas,monospace;color:#333}
+.sec{margin:14px 0 0}.h{font-weight:700;margin-bottom:6px}ul{margin:6px 0 0 1.2em;padding:0}
+.btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+.btn{padding:10px 14px;border-radius:10px;border:1px solid #ddd;background:#fff;cursor:pointer}
+.btn.primary{background:#111;color:#fff;border-color:#111}.fine{font-size:12px;color:#666;margin-top:10px}
+</style></head><body>
+<div class="wrap"><div class="card" role="dialog" aria-modal="true" aria-labelledby="t">
+  <div class="title" id="t"><span class="ok">✓</span> Your purchase was successful</div>
+  <div class="muted" id="summary">We’ve emailed your order details.</div>
+  <div class="sec" id="itemsSec" style="display:none;"><div class="h">Items</div><ul id="items"></ul></div>
+  <div class="sec" id="shipSec" style="display:none;"><div class="h">Shipping to</div><div id="shipTo"></div></div>
+  <div class="row" id="sess"></div>
+  <div class="btns">
+    <button class="btn primary" id="openApp">Open Zenmo</button>
+    <button class="btn" id="copyId">Copy session ID</button>
+  </div>
+  
+</div></div>
+<script>
+(function(){
+  const p=new URLSearchParams(location.search);
+  const status=p.get('status'); const sid=p.get('session_id');
+  const sessEl=document.getElementById('sess'); const itemsSec=document.getElementById('itemsSec');
+  const itemsUl=document.getElementById('items'); const shipSec=document.getElementById('shipSec'); const shipTo=document.getElementById('shipTo');
+  function el(t,txt){const n=document.createElement(t); n.textContent=txt; return n;}
+  if(sid){ sessEl.textContent='Session: '+sid;
+    fetch('/checkoutSummary?session_id='+encodeURIComponent(sid))
+      .then(r=>r.json()).then(d=>{
+        if(d && !d.error){
+          if(Array.isArray(d.items)&&d.items.length){ itemsUl.innerHTML=''; d.items.forEach(it=>itemsUl.appendChild(el('li',`${it.label||'Item'} ×${it.qty??1}`))); itemsSec.style.display=''; }
+          if(d.shipTo){ const name=d.shipTo.name||''; const lines=Array.isArray(d.shipTo.lines)?d.shipTo.lines:[]; const div=document.createElement('div');
+            if(name) div.appendChild(el('div',name)); lines.forEach(l=>div.appendChild(el('div',l)));
+            shipTo.innerHTML=''; shipTo.appendChild(div); shipSec.style.display=''; }
+          if(typeof d.amount==='number' && d.currency){ const amt=(d.amount/100).toFixed(2)+' '+String(d.currency).toUpperCase();
+            const row=document.createElement('div'); row.className='row'; row.textContent='Total: '+amt;
+            document.querySelector('.card').insertBefore(row, document.querySelector('.btns')); }
+        }
+      }).catch(()=>{});
+  } else {
+    document.getElementById('t').textContent='Checkout';
+    document.getElementById('summary').textContent='We could not verify a successful payment.';
+  }
+  document.getElementById('openApp').addEventListener('click', function(){
+    const url='/'+'#/cart?status='+(status||'success')+(sid?('&session_id='+encodeURIComponent(sid)):'');
+    location.href=url;
+  });
+  document.getElementById('copyId').addEventListener('click', async function(){
+    try{ await navigator.clipboard.writeText(sid||''); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy session ID', 1200);}catch{}
+  });
+})();
+</script>
+</body></html>
